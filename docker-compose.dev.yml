@@ -47,11 +47,9 @@ services:
         condition: service_healthy
     restart: "no"
 
-  # ── Six microservices (no Next.js — run that locally with npm run dev) ─────
-  # Ports are exposed on localhost so the local Next.js app can reach them.
-  # Source is mounted live so tsx watch restarts on every save.
+  # ── Combined API service on port 4000 ──────────────────────────────────────
 
-  services:
+  api:
     image: node:20-alpine
     working_dir: /app
     env_file:
@@ -60,28 +58,21 @@ services:
       - .:/app
       - node_modules_dev:/app/node_modules
     ports:
-      - "4001:4001"   # auth
-      - "4002:4002"   # recommendation
-      - "4003:4003"   # sync
-      - "4004:4004"   # collaboration
-      - "4005:4005"   # ai
-      - "4006:4006"   # notification
+      - "4000:4000"
     environment:
-      NODE_ENV:                   "development"
-      DATABASE_URL:               "postgresql://postgres:postgres@postgres:5432/careercopliot"
-      REDIS_URL:                  "redis://redis:6379"
-      JWT_SECRET:                 "local-dev-secret-min-32-chars-long"
-      WEB_URL:                    "http://localhost:3000"
-      GEMINI_API_KEY:             "${GEMINI_API_KEY:-}"
-      OPENROUTER_API_KEY:         "${OPENROUTER_API_KEY:-}"
-      GMAIL_USER:                 "jyotirmoy.baidya.21@aot.edu.in"
-      GMAIL_APP_PASSWORD:         "hshqzmntiqrnptfw"
-      NOTIFICATION_SERVICE_URL:   "http://localhost:4006"
-      COLLABORATION_SERVICE_URL:  "http://localhost:4004"
+      NODE_ENV:            "development"
+      PORT:                "4000"
+      DATABASE_URL:        "postgresql://postgres:postgres@postgres:5432/careercopliot"
+      REDIS_URL:           "redis://redis:6379"
+      JWT_SECRET:          "${JWT_SECRET:-local-dev-secret-min-32-chars-long}"
+      WEB_URL:             "http://localhost:3000"
+      OPENROUTER_API_KEY:  "${OPENROUTER_API_KEY:-}"
+      GMAIL_USER:          "${GMAIL_USER:-}"
+      GMAIL_APP_PASSWORD:  "${GMAIL_APP_PASSWORD:-}"
     command: >
       sh -c "
         npm install &&
-        npx turbo run dev --filter=!@careercopliot/web
+        npx turbo run dev --filter=@careercopliot/api
       "
     depends_on:
       postgres: { condition: service_healthy }

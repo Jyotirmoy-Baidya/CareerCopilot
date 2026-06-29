@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
-import { openRouterText } from '../lib/openrouter';
+import { openRouterText, OpenRouterError } from '../lib/openrouter';
 
 const schema = z.object({
   action:    z.enum(['summarise', 'improve', 'fix_grammar', 'continue', 'make_shorter', 'make_longer']),
@@ -78,8 +78,11 @@ router.post('/', requireAuth, async (req, res) => {
     const text = await openRouterText(prompt, { maxTokens: 800, temperature: 0.4 });
     return res.json({ result: text, action });
   } catch (err) {
+    if (err instanceof OpenRouterError && err.status === 402) {
+      return res.status(402).json({ error: 'out_of_credits', message: 'AI credits exhausted. Please contact support.' });
+    }
     console.error('[ai/document] OpenRouter error:', (err as Error).message);
-    return res.status(500).json({ error: 'AI request failed — check OPENROUTER_API_KEY' });
+    return res.status(500).json({ error: 'AI request failed' });
   }
 });
 

@@ -1,5 +1,11 @@
 const URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+export class OpenRouterError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
 function headers() {
   return {
     Authorization:   `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -27,7 +33,7 @@ export async function openRouterText(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`OpenRouter ${res.status}: ${text}`);
+    throw new OpenRouterError(res.status, `OpenRouter ${res.status}: ${text}`);
   }
 
   const data = await res.json() as { choices: { message: { content: string } }[] };
@@ -50,7 +56,7 @@ export async function openRouterChat(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`OpenRouter ${res.status}: ${text}`);
+    throw new OpenRouterError(res.status, `OpenRouter ${res.status}: ${text}`);
   }
 
   const data = await res.json() as { choices: { message: { content: string } }[] };
@@ -74,7 +80,7 @@ export async function openRouterStream(
   });
 
   if (!res.ok || !res.body) {
-    throw new Error(`OpenRouter stream ${res.status}`);
+    throw new OpenRouterError(res.status, `OpenRouter stream ${res.status}`);
   }
 
   const reader  = res.body.getReader();

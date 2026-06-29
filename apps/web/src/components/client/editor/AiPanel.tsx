@@ -69,6 +69,10 @@ export function AiPanel({ editor, noteTitle }: Props) {
       });
 
       const data = await res.json();
+      if (res.status === 402 || data.error === 'out_of_credits') {
+        toast.error('AI credits exhausted — service temporarily unavailable');
+        return;
+      }
       if (!res.ok) { toast.error(data.error ?? 'AI request failed'); return; }
 
       setResult({ action, text: data.result });

@@ -19,7 +19,9 @@
     "WHATSAPP_API_URL",
     "WHATSAPP_TOKEN",
     "GMAIL_USER",
-    "GMAIL_APP_PASSWORD"
+    "GMAIL_APP_PASSWORD",
+    "OPENROUTER_API_KEY",
+    "PORT"
   ],
   "tasks": {
     "build": {

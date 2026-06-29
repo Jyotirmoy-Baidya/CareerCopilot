@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
-import { openRouterStream } from '../lib/openrouter';
+import { openRouterStream, OpenRouterError } from '../lib/openrouter';
 
 const router = Router();
 
@@ -48,8 +48,11 @@ router.post('/', requireAuth, async (req, res) => {
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (err) {
+    const msg = err instanceof OpenRouterError && err.status === 402
+      ? 'out_of_credits'
+      : 'AI service error';
     console.error('[chat] OpenRouter error:', (err as Error).message);
-    res.write(`data: ${JSON.stringify({ error: 'AI service error' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
     res.end();
   }
 });
