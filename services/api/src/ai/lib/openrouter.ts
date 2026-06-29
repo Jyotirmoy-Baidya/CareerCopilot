@@ -24,7 +24,7 @@ export async function openRouterText(
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
-      model:       'openai/gpt-4o',
+      model:       'google/gemma-4-31b-it:free',
       messages:    [{ role: 'user', content: prompt }],
       max_tokens:  options.maxTokens  ?? 800,
       temperature: options.temperature ?? 0.7,
@@ -49,7 +49,7 @@ export async function openRouterChat(
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
-      model:    'openai/gpt-4o',
+      model:    'google/gemma-4-31b-it:free',
       messages: [{ role: 'system', content: systemPrompt }, ...messages],
     }),
   });
@@ -73,7 +73,7 @@ export async function openRouterStream(
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
-      model:    'openai/gpt-4o',
+      model:    'google/gemma-4-31b-it:free',
       messages: [{ role: 'system', content: systemPrompt }, ...messages],
       stream:   true,
     }),

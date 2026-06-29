@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import type Redis from 'ioredis';
 import { requireAuth } from '../middleware/requireAuth';
 import { openRouterStream, OpenRouterError } from '../lib/openrouter';
 
-const router = Router();
+const CHAT_LIMIT = 3;
 
 const schema = z.object({
   messages: z.array(z.object({
@@ -17,44 +18,64 @@ const schema = z.object({
   }).optional(),
 });
 
-router.post('/', requireAuth, async (req, res) => {
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
-  }
+export function createChatRouter(redis: Redis) {
+  const router = Router();
 
-  const { messages, context } = parsed.data;
+  router.post('/', requireAuth, async (req, res) => {
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
+    }
 
-  const systemPrompt = [
-    'You are a friendly, knowledgeable career mentor for software developers.',
-    'You help learners in India build practical skills and get jobs.',
-    'Keep your answers clear, practical, and encouraging.',
-    context?.targetRole   ? `The learner is targeting: ${context.targetRole}.`        : '',
-    context?.currentSkill ? `They are currently learning: ${context.currentSkill}.`   : '',
-    context?.progressPct  ? `They are ${context.progressPct}% through their roadmap.` : '',
-    'Never give vague answers. Give specific, actionable advice.',
-  ].filter(Boolean).join(' ');
+    // Per-user chat call limit
+    const userId  = req.user!.id;
+    const chatKey = `ai:chat:${userId}`;
+    const count   = await redis.incr(chatKey);
+    if (count > CHAT_LIMIT) {
+      await redis.decr(chatKey);
+      return res.status(429).json({
+        error:   'chat_limit_reached',
+        message: `You have used all ${CHAT_LIMIT} free chat messages.`,
+        used:    CHAT_LIMIT,
+        limit:   CHAT_LIMIT,
+      });
+    }
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection',    'keep-alive');
+    const { messages, context } = parsed.data;
 
-  try {
-    await openRouterStream(
-      systemPrompt,
-      messages as { role: 'user' | 'assistant'; content: string }[],
-      (chunk) => res.write(`data: ${JSON.stringify({ chunk })}\n\n`),
-    );
-    res.write('data: [DONE]\n\n');
-    res.end();
-  } catch (err) {
-    const msg = err instanceof OpenRouterError && err.status === 402
-      ? 'out_of_credits'
-      : 'AI service error';
-    console.error('[chat] OpenRouter error:', (err as Error).message);
-    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
-    res.end();
-  }
-});
+    const systemPrompt = [
+      'You are a friendly career mentor for software developers.',
+      'IMPORTANT: Keep every reply to 10-20 words maximum. Be concise and direct.',
+      context?.targetRole   ? `Learner targets: ${context.targetRole}.`        : '',
+      context?.currentSkill ? `Currently learning: ${context.currentSkill}.`   : '',
+      context?.progressPct  ? `${context.progressPct}% through roadmap.`       : '',
+    ].filter(Boolean).join(' ');
 
-export default router;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection',    'keep-alive');
+    res.setHeader('X-Chat-Used',      count);
+    res.setHeader('X-Chat-Remaining', Math.max(0, CHAT_LIMIT - count));
+
+    try {
+      await openRouterStream(
+        systemPrompt,
+        messages as { role: 'user' | 'assistant'; content: string }[],
+        (chunk) => res.write(`data: ${JSON.stringify({ chunk })}\n\n`),
+      );
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch (err) {
+      const msg = err instanceof OpenRouterError && err.status === 402
+        ? 'out_of_credits'
+        : err instanceof OpenRouterError && err.status === 429
+        ? 'rate_limited'
+        : 'AI service error';
+      console.error('[chat] OpenRouter error:', (err as Error).message);
+      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+      res.end();
+    }
+  });
+
+  return router;
+}

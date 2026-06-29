@@ -73,6 +73,10 @@ export function AiPanel({ editor, noteTitle }: Props) {
         toast.error('AI credits exhausted — service temporarily unavailable');
         return;
       }
+      if (res.status === 429 || data.error === 'rate_limited') {
+        toast.error('AI is busy — wait a moment and try again');
+        return;
+      }
       if (!res.ok) { toast.error(data.error ?? 'AI request failed'); return; }
 
       setResult({ action, text: data.result });

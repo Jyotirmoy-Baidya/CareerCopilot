@@ -79,7 +79,10 @@ router.post('/', requireAuth, async (req, res) => {
     return res.json({ result: text, action });
   } catch (err) {
     if (err instanceof OpenRouterError && err.status === 402) {
-      return res.status(402).json({ error: 'out_of_credits', message: 'AI credits exhausted. Please contact support.' });
+      return res.status(402).json({ error: 'out_of_credits', message: 'AI credits exhausted.' });
+    }
+    if (err instanceof OpenRouterError && err.status === 429) {
+      return res.status(429).json({ error: 'rate_limited', message: 'AI is busy, try again in a moment.' });
     }
     console.error('[ai/document] OpenRouter error:', (err as Error).message);
     return res.status(500).json({ error: 'AI request failed' });
