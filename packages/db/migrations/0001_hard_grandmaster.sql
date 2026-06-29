@@ -1,0 +1,1 @@
+ALTER TABLE "note_versions" ADD COLUMN "html_content" text;

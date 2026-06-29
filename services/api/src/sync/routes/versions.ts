@@ -90,13 +90,19 @@ router.post('/', async (req, res) => {
 
   const versionLabel = label ?? `Snapshot ${new Date().toLocaleString()}`;
 
-  const [version] = await db.insert(noteVersions).values({
-    noteId,
-    yjsSnapshot: Buffer.from(snapshot, 'base64') as any,
-    htmlContent: typeof html === 'string' && html ? html : null,
-    label:       versionLabel,
-    createdBy:   userId,
-  }).returning();
+  let version: typeof noteVersions.$inferSelect | undefined;
+  try {
+    [version] = await db.insert(noteVersions).values({
+      noteId,
+      yjsSnapshot: Buffer.from(snapshot, 'base64') as any,
+      htmlContent: typeof html === 'string' && html ? html : null,
+      label:       versionLabel,
+      createdBy:   userId,
+    }).returning();
+  } catch (err) {
+    console.error('[versions] DB insert failed:', (err as Error).message);
+    return res.status(500).json({ error: 'Failed to save version' });
+  }
 
   // Enqueue notification job (persisted in Redis until worker picks it up)
   const queue = getQueue();
