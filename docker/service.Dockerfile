@@ -27,6 +27,7 @@ RUN npm install
 FROM deps AS builder
 ARG SERVICE
 COPY tsconfig.base.json ./
+COPY turbo.json ./
 
 COPY packages/types ./packages/types
 RUN cd packages/types && npx tsc -p tsconfig.json
