@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body  = await req.json();
-  const token = mintServiceToken({ ...session.user, role: (session.user as any).role });
+  const token = mintServiceToken({ ...session.user, id: session.user.id ?? '', role: (session.user as any).role });
 
   const res = await fetch(`${process.env.AUTH_SERVICE_URL}/auth/onboard`, {
     method:  'POST',

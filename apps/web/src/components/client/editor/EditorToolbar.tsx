@@ -43,12 +43,14 @@ function Sep() {
 }
 
 export function EditorToolbar({ editor }: Props) {
+  const chain = () => editor.chain().focus() as any;
+
   const setLink = () => {
     const prev = editor.getAttributes('link').href ?? '';
     const url  = window.prompt('URL', prev);
     if (url === null) return;
-    if (!url) { editor.chain().focus().unsetLink().run(); return; }
-    editor.chain().focus().setLink({ href: url, target: '_blank' }).run();
+    if (!url) { chain().unsetLink().run(); return; }
+    chain().setLink({ href: url, target: '_blank' }).run();
   };
 
   const sz = 'w-4 h-4';
@@ -56,10 +58,10 @@ export function EditorToolbar({ editor }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b bg-gray-50 select-none">
       {/* Undo / Redo */}
-      <Btn title="Undo" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
+      <Btn title="Undo" onClick={() => chain().undo().run()} disabled={!editor.can().undo()}>
         <Undo2 className={sz} />
       </Btn>
-      <Btn title="Redo" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
+      <Btn title="Redo" onClick={() => chain().redo().run()} disabled={!editor.can().redo()}>
         <Redo2 className={sz} />
       </Btn>
 
@@ -67,15 +69,15 @@ export function EditorToolbar({ editor }: Props) {
 
       {/* Headings */}
       <Btn title="Heading 1" active={editor.isActive('heading', { level: 1 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+        onClick={() => chain().toggleHeading({ level: 1 }).run()}>
         <Heading1 className={sz} />
       </Btn>
       <Btn title="Heading 2" active={editor.isActive('heading', { level: 2 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+        onClick={() => chain().toggleHeading({ level: 2 }).run()}>
         <Heading2 className={sz} />
       </Btn>
       <Btn title="Heading 3" active={editor.isActive('heading', { level: 3 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+        onClick={() => chain().toggleHeading({ level: 3 }).run()}>
         <Heading3 className={sz} />
       </Btn>
 
@@ -83,27 +85,27 @@ export function EditorToolbar({ editor }: Props) {
 
       {/* Inline marks */}
       <Btn title="Bold (Ctrl+B)" active={editor.isActive('bold')}
-        onClick={() => editor.chain().focus().toggleBold().run()}>
+        onClick={() => chain().toggleBold().run()}>
         <Bold className={sz} />
       </Btn>
       <Btn title="Italic (Ctrl+I)" active={editor.isActive('italic')}
-        onClick={() => editor.chain().focus().toggleItalic().run()}>
+        onClick={() => chain().toggleItalic().run()}>
         <Italic className={sz} />
       </Btn>
       <Btn title="Underline (Ctrl+U)" active={editor.isActive('underline')}
-        onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        onClick={() => chain().toggleUnderline().run()}>
         <Underline className={sz} />
       </Btn>
       <Btn title="Strikethrough" active={editor.isActive('strike')}
-        onClick={() => editor.chain().focus().toggleStrike().run()}>
+        onClick={() => chain().toggleStrike().run()}>
         <Strikethrough className={sz} />
       </Btn>
       <Btn title="Inline code" active={editor.isActive('code')}
-        onClick={() => editor.chain().focus().toggleCode().run()}>
+        onClick={() => chain().toggleCode().run()}>
         <Code className={sz} />
       </Btn>
       <Btn title="Highlight" active={editor.isActive('highlight')}
-        onClick={() => editor.chain().focus().toggleHighlight().run()}>
+        onClick={() => chain().toggleHighlight().run()}>
         <Highlighter className={sz} />
       </Btn>
       <Btn title="Link" active={editor.isActive('link')} onClick={setLink}>
@@ -114,15 +116,15 @@ export function EditorToolbar({ editor }: Props) {
 
       {/* Alignment */}
       <Btn title="Align left" active={editor.isActive({ textAlign: 'left' })}
-        onClick={() => editor.chain().focus().setTextAlign('left').run()}>
+        onClick={() => chain().setTextAlign('left').run()}>
         <AlignLeft className={sz} />
       </Btn>
       <Btn title="Align center" active={editor.isActive({ textAlign: 'center' })}
-        onClick={() => editor.chain().focus().setTextAlign('center').run()}>
+        onClick={() => chain().setTextAlign('center').run()}>
         <AlignCenter className={sz} />
       </Btn>
       <Btn title="Align right" active={editor.isActive({ textAlign: 'right' })}
-        onClick={() => editor.chain().focus().setTextAlign('right').run()}>
+        onClick={() => chain().setTextAlign('right').run()}>
         <AlignRight className={sz} />
       </Btn>
 
@@ -130,15 +132,15 @@ export function EditorToolbar({ editor }: Props) {
 
       {/* Lists */}
       <Btn title="Bullet list" active={editor.isActive('bulletList')}
-        onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        onClick={() => chain().toggleBulletList().run()}>
         <List className={sz} />
       </Btn>
       <Btn title="Numbered list" active={editor.isActive('orderedList')}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        onClick={() => chain().toggleOrderedList().run()}>
         <ListOrdered className={sz} />
       </Btn>
       <Btn title="Task list" active={editor.isActive('taskList')}
-        onClick={() => editor.chain().focus().toggleTaskList().run()}>
+        onClick={() => chain().toggleTaskList().run()}>
         <CheckSquare className={sz} />
       </Btn>
 
@@ -146,14 +148,14 @@ export function EditorToolbar({ editor }: Props) {
 
       {/* Blocks */}
       <Btn title="Blockquote" active={editor.isActive('blockquote')}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        onClick={() => chain().toggleBlockquote().run()}>
         <Quote className={sz} />
       </Btn>
       <Btn title="Code block" active={editor.isActive('codeBlock')}
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+        onClick={() => chain().toggleCodeBlock().run()}>
         <Code2 className={sz} />
       </Btn>
-      <Btn title="Divider" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+      <Btn title="Divider" onClick={() => chain().setHorizontalRule().run()}>
         <Minus className={sz} />
       </Btn>
     </div>
