@@ -1,7 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "docker/service.Dockerfile"
-buildArgs = { SERVICE = "notification" }
+dockerfilePath = "docker/notification.Dockerfile"
 
 [deploy]
 startCommand = "node dist/index.js"

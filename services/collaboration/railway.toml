@@ -1,7 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "docker/service.Dockerfile"
-buildArgs = { SERVICE = "collaboration" }
+dockerfilePath = "docker/collaboration.Dockerfile"
 
 [deploy]
 startCommand = "node dist/index.js"

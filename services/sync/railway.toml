@@ -1,7 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "docker/service.Dockerfile"
-buildArgs = { SERVICE = "sync" }
+dockerfilePath = "docker/sync.Dockerfile"
 
 [deploy]
 startCommand = "node dist/index.js"

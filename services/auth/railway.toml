@@ -1,7 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "docker/service.Dockerfile"
-buildArgs = { SERVICE = "auth" }
+dockerfilePath = "docker/auth.Dockerfile"
 
 [deploy]
 startCommand = "node dist/index.js"
