@@ -6,12 +6,12 @@ WORKDIR /app
 
 # ── Install dependencies ──────────────────────────────────────────────────────
 FROM base AS deps
-COPY package.json package-lock.json* ./
+COPY package.json ./
 COPY packages/db/package.json    ./packages/db/
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY apps/web/package.json       ./apps/web/
-RUN npm install
+RUN npm install --no-package-lock
 
 # ── Build Next.js ─────────────────────────────────────────────────────────────
 FROM base AS builder
