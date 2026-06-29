@@ -12,8 +12,8 @@ const ACTIONS: { id: Action; label: string; needsSelection: boolean; description
   { id: 'continue',     label: 'Continue writing',  needsSelection: false, description: 'AI continues writing from where you left off' },
   { id: 'improve',      label: 'Improve writing',   needsSelection: true,  description: 'Rewrite selected text to be clearer' },
   { id: 'fix_grammar',  label: 'Fix grammar',       needsSelection: true,  description: 'Fix spelling and grammar in selection' },
-  { id: 'make_shorter', label: 'Make shorter',      needsSelection: true,  description: 'Condense selected text' },
-  { id: 'make_longer',  label: 'Make longer',       needsSelection: true,  description: 'Expand selected text with more detail' },
+  { id: 'make_shorter', label: 'Make shorter',       needsSelection: true,  description: 'Condense selected text' },
+  { id: 'make_longer',  label: 'Make longer',        needsSelection: true,  description: 'Expand selected text with more detail' },
 ];
 
 interface Props {
@@ -28,11 +28,17 @@ export function AiPanel({ editor, noteTitle }: Props) {
   const [loading, setLoading] = useState<Action | null>(null);
   const [result,  setResult]  = useState<{ action: Action; text: string } | null>(null);
   const [copied,  setCopied]  = useState(false);
-  const [used,    setUsed]    = useState<number>(() => {
-    try { return parseInt(localStorage.getItem('ai_panel_used') ?? '0'); } catch { return 0; }
-  });
+  const [used,    setUsed]    = useState<number>(0);
   const panelRef              = useRef<HTMLDivElement>(null);
   const remaining             = Math.max(0, AI_LIMIT - used);
+
+  // Fetch real usage count from server on mount
+  useEffect(() => {
+    fetch('/api/ai/usage')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setUsed(data.doc.used); })
+      .catch(() => {});
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -62,9 +68,6 @@ export function AiPanel({ editor, noteTitle }: Props) {
     }
 
     setLoading(action);
-    const newUsed = used + 1;
-    setUsed(newUsed);
-    localStorage.setItem('ai_panel_used', String(newUsed));
     try {
       const res = await fetch('/api/ai/document', {
         method:  'POST',
@@ -76,6 +79,10 @@ export function AiPanel({ editor, noteTitle }: Props) {
           title:     noteTitle,
         }),
       });
+
+      // Update counter from server response header
+      const remaining = res.headers.get('X-AI-Calls-Remaining');
+      if (remaining !== null) setUsed(AI_LIMIT - parseInt(remaining));
 
       const data = await res.json();
       if (res.status === 402 || data.error === 'out_of_credits') {
@@ -103,7 +110,6 @@ export function AiPanel({ editor, noteTitle }: Props) {
     } else if (result.action === 'continue') {
       editor.chain().focus().insertContentAt(editor.state.doc.content.size, ` ${result.text}`).run();
     } else {
-      // Replace selection
       const { from, to } = editor.state.selection;
       editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, result.text).run();
     }

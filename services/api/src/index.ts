@@ -38,7 +38,8 @@ import type { GroupPermissions } from '@careercopliot/db';
 import { generateInviteCode } from '@careercopliot/utils';
 
 // ── AI routes ─────────────────────────────────────────────────────────────────
-import { createChatRouter } from './ai/routes/chat';
+import { createChatRouter }  from './ai/routes/chat';
+import { createUsageRouter } from './ai/routes/usage';
 import resumeRoute   from './ai/routes/resume';
 import documentRoute from './ai/routes/document';
 import { createQuizRouter }    from './ai/routes/quiz';
@@ -86,6 +87,7 @@ app.use('/sync/versions', syncLimiter, versionsRoute);
 // ── AI ────────────────────────────────────────────────────────────────────────
 const ipLimiter   = rateLimit({ windowMs: 60_000, max: 20, message: { error: 'Too many AI requests' } });
 const usageLimit  = createAiUsageLimit(redis);
+app.use('/ai/usage',          createUsageRouter(redis));
 app.use('/ai/chat',           ipLimiter, createChatRouter(redis));
 app.use('/ai/document',       ipLimiter, usageLimit, documentRoute);
 app.use('/ai/quiz',           ipLimiter, usageLimit, createQuizRouter(redis));

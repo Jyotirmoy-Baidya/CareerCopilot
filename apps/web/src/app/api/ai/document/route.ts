@@ -21,5 +21,10 @@ export async function POST(req: NextRequest) {
   if (!res) return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 });
   const data = await res.json();
   if (!res.ok) return NextResponse.json(data, { status: res.status });
-  return NextResponse.json(data);
+  const response = NextResponse.json(data);
+  const used      = res.headers.get('X-AI-Calls-Used');
+  const remaining = res.headers.get('X-AI-Calls-Remaining');
+  if (used      !== null) response.headers.set('X-AI-Calls-Used',      used);
+  if (remaining !== null) response.headers.set('X-AI-Calls-Remaining', remaining);
+  return response;
 }

@@ -20,9 +20,11 @@ export async function POST(req: NextRequest) {
   return new NextResponse(res.body, {
     status:  res.status,
     headers: {
-      'Content-Type':  'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection':    'keep-alive',
+      'Content-Type':      'text/event-stream',
+      'Cache-Control':     'no-cache',
+      'Connection':        'keep-alive',
+      'X-Chat-Used':       res.headers.get('X-Chat-Used')      ?? '',
+      'X-Chat-Remaining':  res.headers.get('X-Chat-Remaining') ?? '',
     },
   });
 }

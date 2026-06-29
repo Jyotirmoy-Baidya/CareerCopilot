@@ -10,19 +10,23 @@ interface Message {
 }
 
 export function MentorChat({ targetRole, currentSkill }: { targetRole?: string; currentSkill?: string }) {
-  const [messages,   setMessages]   = useState<Message[]>(() => {
+  const [messages, setMessages] = useState<Message[]>(() => {
     try { return JSON.parse(localStorage.getItem('mentor_chat_messages') ?? '[]'); } catch { return []; }
   });
-  const [input,      setInput]      = useState('');
-  const [loading,    setLoading]    = useState(false);
-  const [used,       setUsed]       = useState<number>(() => {
-    try { return parseInt(localStorage.getItem('mentor_chat_used') ?? '0'); } catch { return 0; }
-  });
-  const [limitHit,   setLimitHit]   = useState(() => {
-    try { return parseInt(localStorage.getItem('mentor_chat_used') ?? '0') >= CHAT_LIMIT; } catch { return false; }
-  });
-  const bottomRef                   = useRef<HTMLDivElement>(null);
-  const remaining                   = Math.max(0, CHAT_LIMIT - used);
+  const [input,   setInput]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [used,    setUsed]    = useState<number>(0);
+  const bottomRef             = useRef<HTMLDivElement>(null);
+  const limitHit              = used >= CHAT_LIMIT;
+  const remaining             = Math.max(0, CHAT_LIMIT - used);
+
+  // Fetch real chat usage from server on mount
+  useEffect(() => {
+    fetch('/api/ai/usage')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setUsed(data.chat.used); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -31,10 +35,6 @@ export function MentorChat({ targetRole, currentSkill }: { targetRole?: string; 
   useEffect(() => {
     localStorage.setItem('mentor_chat_messages', JSON.stringify(messages));
   }, [messages]);
-
-  useEffect(() => {
-    localStorage.setItem('mentor_chat_used', String(used));
-  }, [used]);
 
   const send = async () => {
     if (!input.trim() || loading || limitHit) return;
@@ -58,10 +58,10 @@ export function MentorChat({ targetRole, currentSkill }: { targetRole?: string; 
         }),
       });
 
-      // Increment usage locally on every attempt
-      setUsed(prev => prev + 1);
+      // Update counter from server response header
+      const hRemaining = res.headers.get('X-Chat-Remaining');
+      if (hRemaining !== null) setUsed(CHAT_LIMIT - parseInt(hRemaining));
 
-      // Handle limit / error responses (non-streaming)
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         const errMsg =
@@ -69,7 +69,7 @@ export function MentorChat({ targetRole, currentSkill }: { targetRole?: string; 
           data.error === 'out_of_credits'     ? 'AI credits exhausted.' :
           data.error === 'rate_limited'       ? 'AI is busy — try again in a moment.' :
           'Something went wrong.';
-        if (data.error === 'chat_limit_reached') { setUsed(CHAT_LIMIT); setLimitHit(true); }
+        if (data.error === 'chat_limit_reached') setUsed(CHAT_LIMIT);
         setMessages(prev => {
           const updated = [...prev];
           updated[updated.length - 1] = { role: 'assistant', content: errMsg };
@@ -134,7 +134,6 @@ export function MentorChat({ targetRole, currentSkill }: { targetRole?: string; 
 
   return (
     <div className="flex flex-col h-full max-h-[600px] border rounded-lg overflow-hidden">
-      {/* Header with usage counter */}
       <div className="bg-brand-500 text-white px-4 py-3 flex items-center justify-between">
         <span className="text-sm font-medium">AI Mentor — ask anything</span>
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
