@@ -28,6 +28,8 @@ RUN cd services/api && npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production
+ENV PORT=4000
+EXPOSE 4000
 
 COPY --from=builder /app/node_modules ./node_modules
 
