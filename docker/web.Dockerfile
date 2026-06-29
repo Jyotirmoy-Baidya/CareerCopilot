@@ -15,6 +15,11 @@ RUN npm install --no-package-lock
 
 # ── Build Next.js ─────────────────────────────────────────────────────────────
 FROM base AS builder
+
+# NEXT_PUBLIC_* vars must be present at build time — they get inlined into the JS bundle
+ARG NEXT_PUBLIC_WS_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY packages/db    ./packages/db
 COPY packages/types ./packages/types
