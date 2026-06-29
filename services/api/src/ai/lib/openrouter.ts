@@ -30,8 +30,8 @@ export async function openRouterText(
     throw new Error(`OpenRouter ${res.status}: ${text}`);
   }
 
-  const data = await res.json();
-  return (data.choices[0].message.content as string).trim();
+  const data = await res.json() as { choices: { message: { content: string } }[] };
+  return data.choices[0].message.content.trim();
 }
 
 /** Multi-turn chat with system prompt — returns the text content */
@@ -53,8 +53,8 @@ export async function openRouterChat(
     throw new Error(`OpenRouter ${res.status}: ${text}`);
   }
 
-  const data = await res.json();
-  return (data.choices[0].message.content as string).trim();
+  const data = await res.json() as { choices: { message: { content: string } }[] };
+  return data.choices[0].message.content.trim();
 }
 
 /** Streaming chat — pipes SSE chunks to an Express response */
