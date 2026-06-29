@@ -3,12 +3,12 @@ RUN apk add --no-cache libc6-compat wget
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json package-lock.json* ./
+COPY package.json ./
 COPY packages/db/package.json      ./packages/db/
 COPY packages/types/package.json   ./packages/types/
 COPY packages/utils/package.json   ./packages/utils/
 COPY services/api/package.json     ./services/api/
-RUN npm install
+RUN npm install --no-package-lock
 
 FROM deps AS builder
 COPY tsconfig.base.json ./
