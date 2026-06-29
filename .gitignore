@@ -1,0 +1,19 @@
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+.turbo
+**/.turbo
+*.log
+**/*.log
+.env
+.env.local
+coverage
+**/coverage
+
+# Project tracking files — not for git
+plan.md
+todo.md
+implemented.md

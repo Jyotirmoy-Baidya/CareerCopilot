@@ -1,0 +1,245 @@
+name: careercopliot
+
+services:
+
+  # ── Infrastructure ─────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB:       careercopliot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d careercopliot"]
+      interval: 5s
+      timeout:  5s
+      retries:  10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:     ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout:  3s
+      retries:  10
+
+  # ── Migration + seed (runs once then exits) ────────────────────────────────
+
+  migrate:
+    build:
+      context:    .
+      dockerfile: docker/migrate.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/careercopliot
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ── Microservices ──────────────────────────────────────────────────────────
+
+  auth:
+    build:
+      context:    .
+      dockerfile: docker/service.Dockerfile
+      args:
+        SERVICE: auth
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      NODE_ENV:           production
+      AUTH_SERVICE_PORT:  4001
+      DATABASE_URL:       postgresql://postgres:postgres@postgres:5432/careercopliot
+      REDIS_URL:          redis://redis:6379
+      JWT_SECRET:         ${JWT_SECRET:-local-dev-secret-min-32-chars-long}
+      WEB_URL:            http://localhost:3000
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      migrate:  { condition: service_completed_successfully }
+    healthcheck:
+      test:     ["CMD-SHELL", "wget -qO- http://localhost:4001/health || exit 1"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  recommendation:
+    build:
+      context:    .
+      dockerfile: docker/service.Dockerfile
+      args:
+        SERVICE: recommendation
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    environment:
+      NODE_ENV:                      production
+      RECOMMENDATION_SERVICE_PORT:   4002
+      DATABASE_URL:                  postgresql://postgres:postgres@postgres:5432/careercopliot
+      REDIS_URL:                     redis://redis:6379
+      JWT_SECRET:                    ${JWT_SECRET:-local-dev-secret-min-32-chars-long}
+      NOTIFICATION_SERVICE_URL:      http://notification:4006
+      WEB_URL:                       http://localhost:3000
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      migrate:  { condition: service_completed_successfully }
+    healthcheck:
+      test:     ["CMD-SHELL", "wget -qO- http://localhost:4002/health || exit 1"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  sync:
+    build:
+      context:    .
+      dockerfile: docker/service.Dockerfile
+      args:
+        SERVICE: sync
+    restart: unless-stopped
+    ports:
+      - "4003:4003"
+    environment:
+      NODE_ENV:                    production
+      SYNC_SERVICE_PORT:           4003
+      DATABASE_URL:                postgresql://postgres:postgres@postgres:5432/careercopliot
+      REDIS_URL:                   redis://redis:6379
+      JWT_SECRET:                  ${JWT_SECRET:-local-dev-secret-min-32-chars-long}
+      COLLABORATION_SERVICE_URL:   http://collaboration:4004
+      WEB_URL:                     http://localhost:3000
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate:  { condition: service_completed_successfully }
+    healthcheck:
+      test:     ["CMD-SHELL", "wget -qO- http://localhost:4003/health || exit 1"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  collaboration:
+    build:
+      context:    .
+      dockerfile: docker/service.Dockerfile
+      args:
+        SERVICE: collaboration
+    restart: unless-stopped
+    ports:
+      - "4004:4004"
+    environment:
+      NODE_ENV:                      production
+      COLLABORATION_SERVICE_PORT:    4004
+      DATABASE_URL:                  postgresql://postgres:postgres@postgres:5432/careercopliot
+      REDIS_URL:                     redis://redis:6379
+      JWT_SECRET:                    ${JWT_SECRET:-local-dev-secret-min-32-chars-long}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      migrate:  { condition: service_completed_successfully }
+    healthcheck:
+      test:     ["CMD-SHELL", "wget -qO- http://localhost:4004/health || exit 1"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  ai:
+    build:
+      context:    .
+      dockerfile: docker/service.Dockerfile
+      args:
+        SERVICE: ai
+    restart: unless-stopped
+    ports:
+      - "4005:4005"
+    environment:
+      NODE_ENV:           production
+      AI_SERVICE_PORT:    4005
+      DATABASE_URL:       postgresql://postgres:postgres@postgres:5432/careercopliot
+      REDIS_URL:          redis://redis:6379
+      JWT_SECRET:         ${JWT_SECRET:-local-dev-secret-min-32-chars-long}
+      GEMINI_API_KEY:     ${GEMINI_API_KEY:-}
+      WEB_URL:            http://localhost:3000
+    depends_on:
+      redis:   { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test:     ["CMD-SHELL", "wget -qO- http://localhost:4005/health || exit 1"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  notification:
+    build:
+      context:    .
+      dockerfile: docker/service.Dockerfile
+      args:
+        SERVICE: notification
+    restart: unless-stopped
+    ports:
+      - "4006:4006"
+    environment:
+      NODE_ENV:                    production
+      NOTIFICATION_SERVICE_PORT:   4006
+      DATABASE_URL:                postgresql://postgres:postgres@postgres:5432/careercopliot
+      REDIS_URL:                   redis://redis:6379
+      JWT_SECRET:                  ${JWT_SECRET:-local-dev-secret-min-32-chars-long}
+      WHATSAPP_API_URL:            ${WHATSAPP_API_URL:-}
+      WHATSAPP_TOKEN:              ${WHATSAPP_TOKEN:-}
+      WEB_URL:                     http://localhost:3000
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      migrate:  { condition: service_completed_successfully }
+    healthcheck:
+      test:     ["CMD-SHELL", "wget -qO- http://localhost:4006/health || exit 1"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  # ── Next.js web app ────────────────────────────────────────────────────────
+  # Starts last — only after all six services are healthy.
+  # Service-to-service calls inside Next.js use container names (http://auth:4001).
+  # The browser connects to the WebSocket directly on localhost:4004.
+
+  web:
+    build:
+      context:    .
+      dockerfile: docker/web.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV:                    production
+      NEXTAUTH_SECRET:             ${NEXTAUTH_SECRET:-local-nextauth-secret-string}
+      NEXTAUTH_URL:                http://localhost:3000
+      WEB_URL:                     http://localhost:3000
+      JWT_SECRET:                  ${JWT_SECRET:-local-dev-secret-min-32-chars-long}
+      NEXT_PUBLIC_WS_URL:          ws://localhost:4004
+      AUTH_SERVICE_URL:            http://auth:4001
+      RECOMMENDATION_SERVICE_URL:  http://recommendation:4002
+      SYNC_SERVICE_URL:            http://sync:4003
+      COLLABORATION_SERVICE_URL:   http://collaboration:4004
+      AI_SERVICE_URL:              http://ai:4005
+      NOTIFICATION_SERVICE_URL:    http://notification:4006
+    depends_on:
+      auth:           { condition: service_healthy }
+      recommendation: { condition: service_healthy }
+      sync:           { condition: service_healthy }
+      collaboration:  { condition: service_healthy }
+      ai:             { condition: service_healthy }
+      notification:   { condition: service_healthy }
+
+volumes:
+  postgres_data:
+  redis_data:

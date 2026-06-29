@@ -1,0 +1,93 @@
+name: careercopliot-dev
+
+services:
+
+  # ── Infrastructure ─────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB:       careercopliot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U postgres -d careercopliot"]
+      interval: 5s
+      timeout:  5s
+      retries:  10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test:     ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout:  3s
+      retries:  10
+
+  # ── One-time schema push + seed ────────────────────────────────────────────
+
+  migrate:
+    build:
+      context:    .
+      dockerfile: docker/migrate.Dockerfile
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/careercopliot"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ── Six microservices (no Next.js — run that locally with npm run dev) ─────
+  # Ports are exposed on localhost so the local Next.js app can reach them.
+  # Source is mounted live so tsx watch restarts on every save.
+
+  services:
+    image: node:20-alpine
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - node_modules_dev:/app/node_modules
+    ports:
+      - "4001:4001"   # auth
+      - "4002:4002"   # recommendation
+      - "4003:4003"   # sync
+      - "4004:4004"   # collaboration
+      - "4005:4005"   # ai
+      - "4006:4006"   # notification
+    environment:
+      NODE_ENV:                   "development"
+      DATABASE_URL:               "postgresql://postgres:postgres@postgres:5432/careercopliot"
+      REDIS_URL:                  "redis://redis:6379"
+      JWT_SECRET:                 "local-dev-secret-min-32-chars-long"
+      WEB_URL:                    "http://localhost:3000"
+      GEMINI_API_KEY:             "${GEMINI_API_KEY:-}"
+      GMAIL_USER:                 "jyotirmoy.baidya.21@aot.edu.in"
+      GMAIL_APP_PASSWORD:         "hshqzmntiqrnptfw"
+      NOTIFICATION_SERVICE_URL:   "http://localhost:4006"
+      COLLABORATION_SERVICE_URL:  "http://localhost:4004"
+    command: >
+      sh -c "
+        npm install &&
+        npx turbo run dev --filter=!@careercopliot/web
+      "
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      migrate:  { condition: service_completed_successfully }
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  node_modules_dev:
