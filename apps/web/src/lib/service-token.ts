@@ -1,10 +1,10 @@
 import crypto from 'crypto';
 
 export function mintServiceToken(user: {
-  id:    string;
-  email: string | null | undefined;
-  name:  string | null | undefined;
-  role?: string;
+  id:     string;
+  email?: string | null;
+  name?:  string | null;
+  role?:  string;
 }): string {
   const secret = process.env.JWT_SECRET!;
   const now    = Math.floor(Date.now() / 1000);

@@ -7,9 +7,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@ai-sdk/google": "^0.0.52",
     "@careercopliot/db": "*",
-    "ai": "^3.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "express": "^4.19.0",

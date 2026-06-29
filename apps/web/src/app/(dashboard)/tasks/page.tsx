@@ -5,9 +5,9 @@ import { TaskBoard } from '@/components/client/dashboard/TaskBoard';
 
 export default async function TasksPage() {
   const session = await auth();
-  if (!session) return null;
+  if (!session || !session.user) return null;
 
-  const token      = mintServiceToken({ ...session.user, role: (session.user as any).role });
+  const token      = mintServiceToken({ ...session.user, id: session.user.id ?? '', role: (session.user as any).role });
   const targetRole = (session.user as any).targetRole ?? 'fullstack';
   const roadmap    = await fetchRoadmap(token, targetRole).catch(() => null);
   const tasks      = roadmap ? await fetchDailyTasks(token, roadmap.roadmapId).catch(() => []) : [];

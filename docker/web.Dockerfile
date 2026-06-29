@@ -6,12 +6,12 @@ WORKDIR /app
 
 # ── Install dependencies ──────────────────────────────────────────────────────
 FROM base AS deps
-COPY package.json package-lock.json* ./
+COPY package.json ./
 COPY packages/db/package.json    ./packages/db/
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY apps/web/package.json       ./apps/web/
-RUN npm install
+RUN npm install --no-package-lock
 
 # ── Build Next.js ─────────────────────────────────────────────────────────────
 FROM base AS builder
@@ -37,7 +37,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static     ./apps/web/.next/static
 
 USER nextjs
-EXPOSE 3000
-ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+EXPOSE 8080
 CMD ["node", "apps/web/server.js"]

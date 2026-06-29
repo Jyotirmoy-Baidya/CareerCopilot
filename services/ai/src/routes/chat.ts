@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { google } from '@ai-sdk/google';
-import { streamText } from 'ai';
 import { requireAuth } from '../middleware/requireAuth';
+import { openRouterStream } from '../lib/openrouter';
 
 const router = Router();
 
@@ -30,29 +29,26 @@ router.post('/', requireAuth, async (req, res) => {
     'You are a friendly, knowledgeable career mentor for software developers.',
     'You help learners in India build practical skills and get jobs.',
     'Keep your answers clear, practical, and encouraging.',
-    context?.targetRole    ? `The learner is targeting: ${context.targetRole}.`    : '',
-    context?.currentSkill  ? `They are currently learning: ${context.currentSkill}.` : '',
-    context?.progressPct   ? `They are ${context.progressPct}% through their roadmap.` : '',
+    context?.targetRole   ? `The learner is targeting: ${context.targetRole}.`        : '',
+    context?.currentSkill ? `They are currently learning: ${context.currentSkill}.`   : '',
+    context?.progressPct  ? `They are ${context.progressPct}% through their roadmap.` : '',
     'Never give vague answers. Give specific, actionable advice.',
   ].filter(Boolean).join(' ');
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Connection',    'keep-alive');
 
   try {
-    const result = await streamText({
-      model:    google('gemini-1.5-flash'),
-      system:   systemPrompt,
-      messages: messages as any,
-    });
-
-    for await (const chunk of result.textStream) {
-      res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
-    }
+    await openRouterStream(
+      systemPrompt,
+      messages as { role: 'user' | 'assistant'; content: string }[],
+      (chunk) => res.write(`data: ${JSON.stringify({ chunk })}\n\n`),
+    );
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (err) {
+    console.error('[chat] OpenRouter error:', (err as Error).message);
     res.write(`data: ${JSON.stringify({ error: 'AI service error' })}\n\n`);
     res.end();
   }

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'nodeId and roadmapId are required' }, { status: 400 });
   }
 
-  const token = mintServiceToken({ ...session.user, role: (session.user as any).role });
+  const token = mintServiceToken({ ...session.user, id: session.user.id ?? '', role: (session.user as any).role });
 
   const res = await fetch(`${RECOMMEND}/recommendation/complete-skill`, {
     method:  'POST',
