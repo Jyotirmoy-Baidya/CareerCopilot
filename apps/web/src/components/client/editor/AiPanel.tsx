@@ -21,12 +21,18 @@ interface Props {
   noteTitle: string;
 }
 
+const AI_LIMIT = 3;
+
 export function AiPanel({ editor, noteTitle }: Props) {
   const [open,    setOpen]    = useState(false);
   const [loading, setLoading] = useState<Action | null>(null);
   const [result,  setResult]  = useState<{ action: Action; text: string } | null>(null);
   const [copied,  setCopied]  = useState(false);
+  const [used,    setUsed]    = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('ai_panel_used') ?? '0'); } catch { return 0; }
+  });
   const panelRef              = useRef<HTMLDivElement>(null);
+  const remaining             = Math.max(0, AI_LIMIT - used);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -56,6 +62,9 @@ export function AiPanel({ editor, noteTitle }: Props) {
     }
 
     setLoading(action);
+    const newUsed = used + 1;
+    setUsed(newUsed);
+    localStorage.setItem('ai_panel_used', String(newUsed));
     try {
       const res = await fetch('/api/ai/document', {
         method:  'POST',
@@ -115,7 +124,7 @@ export function AiPanel({ editor, noteTitle }: Props) {
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        disabled={!!loading}
+        disabled={!!loading || remaining === 0}
         className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-gradient-to-r from-emerald-500 to-sky-500 text-white hover:opacity-90 transition disabled:opacity-50 shadow-sm"
         title="AI Writing Assistant"
       >
@@ -125,6 +134,13 @@ export function AiPanel({ editor, noteTitle }: Props) {
           <Sparkles className="w-3.5 h-3.5" />
         )}
         <span>{loading ? 'Thinking…' : 'AI'}</span>
+        {!loading && (
+          <span className={`ml-0.5 px-1 py-0 rounded text-[10px] font-bold ${
+            remaining === 0 ? 'bg-red-500' : remaining === 1 ? 'bg-yellow-400 text-yellow-900' : 'bg-white/25'
+          }`}>
+            {remaining}/{AI_LIMIT}
+          </span>
+        )}
         {!loading && <ChevronDown className="w-3 h-3 opacity-70" />}
       </button>
 

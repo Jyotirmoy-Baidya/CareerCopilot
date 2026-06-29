@@ -62,7 +62,7 @@ export function MobileNav({ userName }: Props) {
               key={l.href}
               href={l.href}
               className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition ${
-                pathname === l.href
+                pathname === l.href || (l.href !== '/home' && pathname.startsWith(l.href))
                   ? 'bg-brand-50 text-brand-600'
                   : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
               }`}

@@ -22,7 +22,7 @@ export function NavLinks() {
           key={l.href}
           href={l.href}
           className={`text-sm px-3 py-1.5 rounded-md font-medium transition ${
-            pathname === l.href
+            pathname === l.href || (l.href !== '/home' && pathname.startsWith(l.href))
               ? 'bg-brand-50 text-brand-600'
               : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
           }`}
