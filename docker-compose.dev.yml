@@ -73,6 +73,7 @@ services:
       JWT_SECRET:                 "local-dev-secret-min-32-chars-long"
       WEB_URL:                    "http://localhost:3000"
       GEMINI_API_KEY:             "${GEMINI_API_KEY:-}"
+      OPENROUTER_API_KEY:         "${OPENROUTER_API_KEY:-}"
       GMAIL_USER:                 "jyotirmoy.baidya.21@aot.edu.in"
       GMAIL_APP_PASSWORD:         "hshqzmntiqrnptfw"
       NOTIFICATION_SERVICE_URL:   "http://localhost:4006"

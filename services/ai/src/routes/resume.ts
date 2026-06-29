@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { google } from '@ai-sdk/google';
-import { generateText } from 'ai';
 import { requireAuth } from '../middleware/requireAuth';
+import { openRouterText } from '../lib/openrouter';
 
 const router = Router();
 
@@ -20,13 +19,12 @@ router.post('/', requireAuth, async (req, res) => {
   const { resumeText, targetRole } = parsed.data;
 
   try {
-    const { text } = await generateText({
-      model: google('gemini-1.5-flash'),
-      prompt: `You are a senior tech recruiter. Review this resume for a candidate targeting "${targetRole}".
+    const text = await openRouterText(
+      `You are a senior tech recruiter. Review this resume for a candidate targeting "${targetRole}".
 Resume:
 ${resumeText}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with no markdown or explanation:
 {
   "overallScore": 72,
   "strengths": ["..."],
@@ -35,13 +33,14 @@ Return ONLY valid JSON:
   "skillsFound": ["..."],
   "skillsMissing": ["..."]
 }`,
-    });
+    );
 
     const jsonMatch = text.match(/\{[\s\S]+\}/);
     if (!jsonMatch) throw new Error('No JSON in response');
 
     return res.json(JSON.parse(jsonMatch[0]));
-  } catch {
+  } catch (err) {
+    console.error('[resume] OpenRouter error:', (err as Error).message);
     return res.status(500).json({ error: 'Resume review failed' });
   }
 });

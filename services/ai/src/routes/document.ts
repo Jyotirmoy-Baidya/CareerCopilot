@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { google } from '@ai-sdk/google';
-import { generateText } from 'ai';
 import { requireAuth } from '../middleware/requireAuth';
+import { openRouterText } from '../lib/openrouter';
 
 const schema = z.object({
   action:    z.enum(['summarise', 'improve', 'fix_grammar', 'continue', 'make_shorter', 'make_longer']),
@@ -19,14 +18,14 @@ Return ONLY the bullet points, no preamble.
 NOTE CONTENT:
 ${content}`,
 
-  improve: (_content, selection, _title) =>
+  improve: (_content, selection) =>
     `Rewrite the following text to be clearer, more professional, and better structured.
 Return ONLY the improved text. No explanation, no preamble.
 
 TEXT:
 ${selection}`,
 
-  fix_grammar: (_content, selection, _title) =>
+  fix_grammar: (_content, selection) =>
     `Fix all grammar, spelling, and punctuation errors in the following text.
 Return ONLY the corrected text. Do not change the meaning or style.
 
@@ -41,14 +40,14 @@ Return ONLY the continuation text, no preamble.
 NOTE SO FAR:
 ${content}`,
 
-  make_shorter: (_content, selection, _title) =>
+  make_shorter: (_content, selection) =>
     `Make the following text shorter and more concise while preserving the key information.
 Return ONLY the shortened text.
 
 TEXT:
 ${selection}`,
 
-  make_longer: (_content, selection, _title) =>
+  make_longer: (_content, selection) =>
     `Expand the following text with more detail and explanation while keeping the same meaning and tone.
 Return ONLY the expanded text.
 
@@ -66,29 +65,21 @@ router.post('/', requireAuth, async (req, res) => {
 
   const { action, content, selection = '', title = 'Untitled' } = parsed.data;
 
-  // Actions that need a selection but none provided
   const needsSelection = ['improve', 'fix_grammar', 'make_shorter', 'make_longer'];
   if (needsSelection.includes(action) && !selection.trim()) {
     return res.status(400).json({ error: 'Please select some text first' });
   }
 
-  const prompt = PROMPTS[action](
-    content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
-    selection.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
-    title,
-  );
+  const strip = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const prompt = PROMPTS[action](strip(content), strip(selection), title);
 
   try {
-    const { text } = await generateText({
-      model:       google('gemini-1.5-flash'),
-      prompt,
-      maxTokens:   800,
-      temperature: 0.4,
-    });
-    return res.json({ result: text.trim(), action });
+    const text = await openRouterText(prompt, { maxTokens: 800, temperature: 0.4 });
+    return res.json({ result: text, action });
   } catch (err) {
-    console.error('[ai/document] Gemini error:', (err as Error).message);
-    return res.status(500).json({ error: 'AI request failed — check GEMINI_API_KEY' });
+    console.error('[ai/document] OpenRouter error:', (err as Error).message);
+    return res.status(500).json({ error: 'AI request failed — check OPENROUTER_API_KEY' });
   }
 });
 

@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { google } from '@ai-sdk/google';
-import { generateText } from 'ai';
 import type Redis from 'ioredis';
 import { requireAuth } from '../middleware/requireAuth';
+import { openRouterText } from '../lib/openrouter';
 
 const schema = z.object({
   tasksCompleted: z.number().min(0),
@@ -30,17 +29,17 @@ export function createSummaryRouter(redis: Redis) {
     if (cached) return res.json(JSON.parse(cached));
 
     try {
-      const { text } = await generateText({
-        model: google('gemini-1.5-flash'),
-        prompt: `Write a short, warm weekly progress summary for a learner targeting ${targetRole}.
+      const text = await openRouterText(
+        `Write a short, warm weekly progress summary for a learner targeting ${targetRole}.
 Facts: ${tasksCompleted} tasks completed this week, ${streakDays} day streak, ${progressPct}% through their roadmap.
 Keep it under 100 words. Be specific to the numbers. Be encouraging but honest.`,
-      });
+      );
 
-      const result = { summary: text.trim() };
+      const result = { summary: text };
       await redis.set(cacheKey, JSON.stringify(result), 'EX', 86400);
       return res.json(result);
-    } catch {
+    } catch (err) {
+      console.error('[summary] OpenRouter error:', (err as Error).message);
       return res.status(500).json({ error: 'Summary generation failed' });
     }
   });
